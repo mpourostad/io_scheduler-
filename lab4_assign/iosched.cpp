@@ -28,6 +28,7 @@ class io_request{
     int max_wait_time;
     int turnaround;
     bool pending;
+    // bool is_complete;
     io_request (int , int, int); 
 
 };
@@ -36,6 +37,7 @@ io_request::io_request(int s, int t, int indx){
     start_track = t;
     io_num = indx;
     pending = false;
+    // is_complete = false;
     // turnaround = 0;
     // wait_time = 0;
 }
@@ -67,16 +69,9 @@ class FIFO: public Scheduler{
     void add_to_queue(vector <io_request*> v){
         for (int i = 0; i < v.size(); i++){
             if (v[i]->start_time == time_){
-                // if (io_queue.empty()){
-                //     io_queue.push(v[i]);
-                //     break;
-                // }
-                // else if (io_queue.front()->io_num != v[i]->io_num){
-                //     io_queue.push(v[i]);
-                //     break;
-                // }
                 if (!v[i]->pending){
                     io_queue.push(v[i]);
+                    // v[i] ->pending = true;
                     break;
                 }
             }
@@ -84,6 +79,51 @@ class FIFO: public Scheduler{
     }
         
 };
+class SSTF: public Scheduler{
+    vector <io_request*> io_queue;
+    io_request *fetch_next_request(){
+        if (io_queue.empty()){
+            return nullptr;
+        }
+        io_request *p;
+        int shortest_seek = numeric_limits<int>::max();
+        int index;
+        
+        for (int i = 0; i < io_queue.size(); i++){
+            if (abs(track - io_queue[i] -> start_track) < shortest_seek){
+                p = io_queue[i];
+                index = i;
+                shortest_seek = abs(track - io_queue[i] -> start_track);
+            }
+        }
+        io_queue.erase(io_queue.begin() + index);
+        // cout << "this" << endl;
+        return p;
+
+
+    }
+    void add_to_queue(vector <io_request*> v){
+        for (int i = 0; i < v.size(); i++){
+            if (v[i]->start_time == time_){
+                if (!v[i]->pending){
+                    io_queue.push_back(v[i]);
+                    v[i] ->pending = true;
+                    break;
+                }
+            }
+        }
+    }
+};
+bool is_complete(vector <io_request*> req){
+    for (int i = 0; i < req.size(); i++){
+        if (!req[i] -> pending){
+            time_ = req[i] -> start_time;
+            return false;
+
+        }
+    }
+    return true;
+}
 void print_io_request_info(vector <io_request*> req){
     for (int i = 0; i < req.size(); i++){
         printf("%5d: %5d %5d %5d\n",i, req[i]-> start_time, req[i]-> disk_service_startt, req[i]-> disk_service_endt);
@@ -140,7 +180,7 @@ int main(int argc, char** argv){
         }
 
     }
-    Scheduler *scheduler = new FIFO;
+    Scheduler *scheduler = new SSTF;
     // for (int i = 0; i < io_request_p.size(); i++){
     //     cout << io_request_p[i]->io_num << " " << io_request_p[i] ->start_time << " " << io_request_p[i] -> start_track << endl;
     // }
@@ -151,25 +191,28 @@ int main(int argc, char** argv){
     while (true){        
         
         scheduler->add_to_queue(io_request_p);
-        // cout << "that " << endl;
+        
         // cout << scheduler -> io_queue.front();
         if (complete){
             active_io ->disk_service_endt = time_;
             // active_io -> turnaround = active_io ->disk_service_endt - active_io -> start_time;
             active_io = nullptr;
             complete = false;
+            // active_io -> is_complete = true;
             // time_++;
         }
         if (active_io == nullptr){            
             active_io = scheduler->fetch_next_request();
             // cout << active_io ->io_num << endl;
-            if (active_io == nullptr){                
-                break;
+            if (active_io == nullptr){ 
+                // cout << "this " << endl;  
+                if (is_complete(io_request_p)){
+                    break;
+                }
+                // cout << "this " << endl;               
+                continue;
             }
-            active_io-> disk_service_startt = time_;
-            // cout << active_io ->io_num << ": " << active_io -> disk_service_startt << endl;
-            // cout << scheduler -> io_queue.front();
-            // continue;           
+            active_io-> disk_service_startt = time_;        
         }
         // else{
         if (track < active_io -> start_track){
