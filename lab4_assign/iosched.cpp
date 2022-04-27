@@ -28,6 +28,7 @@ class io_request{
     int max_wait_time;
     int turnaround;
     bool pending;
+    bool positive;
     // bool is_complete;
     io_request (int , int, int); 
 
@@ -37,6 +38,7 @@ io_request::io_request(int s, int t, int indx){
     start_track = t;
     io_num = indx;
     pending = false;
+    positive = true;
     // is_complete = false;
     // turnaround = 0;
     // wait_time = 0;
@@ -44,7 +46,7 @@ io_request::io_request(int s, int t, int indx){
 class Scheduler{
     public:
     queue <io_request*> io_queue;
-    virtual io_request *fetch_next_request(){
+    virtual io_request *fetch_next_request(int direction){
         return nullptr;
     }
     virtual void add_to_queue(vector <io_request*> v){        
@@ -54,7 +56,7 @@ class Scheduler{
 class FIFO: public Scheduler{
     public:
     // queue <io_request*> io_queue;
-    io_request *fetch_next_request(){
+    io_request *fetch_next_request(int direction){
         io_request *p;
         if (io_queue.empty()){
             return nullptr;
@@ -62,7 +64,7 @@ class FIFO: public Scheduler{
         else{
             p = io_queue.front();
             io_queue.pop();
-            p ->pending = true;
+            // p ->pending = true;
             return p;
         }
     }
@@ -71,7 +73,7 @@ class FIFO: public Scheduler{
             if (v[i]->start_time == time_){
                 if (!v[i]->pending){
                     io_queue.push(v[i]);
-                    // v[i] ->pending = true;
+                    v[i] ->pending = true;
                     break;
                 }
             }
@@ -81,7 +83,7 @@ class FIFO: public Scheduler{
 };
 class SSTF: public Scheduler{
     vector <io_request*> io_queue;
-    io_request *fetch_next_request(){
+    io_request *fetch_next_request(int direction){
         if (io_queue.empty()){
             return nullptr;
         }
@@ -94,6 +96,54 @@ class SSTF: public Scheduler{
                 p = io_queue[i];
                 index = i;
                 shortest_seek = abs(track - io_queue[i] -> start_track);
+            }
+        }
+        io_queue.erase(io_queue.begin() + index);
+        // cout << "this" << endl;
+        return p;
+
+
+    }
+    void add_to_queue(vector <io_request*> v){
+        for (int i = 0; i < v.size(); i++){
+            if (v[i]->start_time == time_){
+                if (!v[i]->pending){
+                    io_queue.push_back(v[i]);
+                    v[i] ->pending = true;
+                    break;
+                }
+            }
+        }
+    }
+};
+class Look: public Scheduler{
+    vector <io_request*> io_queue;
+    io_request *fetch_next_request(int direction){
+        if (io_queue.empty()){
+            return nullptr;
+        }
+        io_request *p = nullptr;
+        int shortest_seek = numeric_limits<int>::max();
+        int index;
+        
+        for (int i = 0; i < io_queue.size(); i++){
+            if (abs(track - io_queue[i] -> start_track) < shortest_seek){
+                if ((track - io_queue[i] -> start_track) * direction <= 0){
+                    p = io_queue[i];
+                    index = i;
+                    shortest_seek = abs(track - io_queue[i] -> start_track);
+                }
+                
+            }
+        }
+        if (p == nullptr){
+            for (int i = 0; i < io_queue.size(); i++){
+                if (abs(track - io_queue[i] -> start_track) < shortest_seek){
+                    p = io_queue[i];
+                    index = i;
+                    shortest_seek = abs(track - io_queue[i] -> start_track);
+                
+                }
             }
         }
         io_queue.erase(io_queue.begin() + index);
@@ -152,8 +202,26 @@ int main(int argc, char** argv){
     // char *get_pager = NULL;
     tot_movement = 0;
     int num = 0;
+    int c;
+    char *strategy = NULL;
+    strategy = optarg;
+    Scheduler *scheduler;
+    while ((c = getopt (argc, argv, "s:")) != -1){
+        if (optarg[0] == 'i'){
+            scheduler = new FIFO;
+        }
+        else if (optarg[0] == 'j'){
+            scheduler = new SSTF;
+        }
+        else if (optarg[0] == 's'){
+            scheduler = new Look;
+        }
+        else{
+            cout <<" N/A " << endl;
+        }
+    }
     
-    string filename_input = argv[1];
+    string filename_input = argv[2];
     vector <int> start_time;
     vector <int> track_num;
     vector <io_request*> io_request_p;
@@ -180,13 +248,13 @@ int main(int argc, char** argv){
         }
 
     }
-    Scheduler *scheduler = new SSTF;
     // for (int i = 0; i < io_request_p.size(); i++){
     //     cout << io_request_p[i]->io_num << " " << io_request_p[i] ->start_time << " " << io_request_p[i] -> start_track << endl;
     // }
     time_ = 1;
     track = 0;
     bool complete = false;
+    int direction = 1;
     io_request *active_io = nullptr;
     while (true){        
         
@@ -202,7 +270,7 @@ int main(int argc, char** argv){
             // time_++;
         }
         if (active_io == nullptr){            
-            active_io = scheduler->fetch_next_request();
+            active_io = scheduler->fetch_next_request(direction);
             // cout << active_io ->io_num << endl;
             if (active_io == nullptr){ 
                 // cout << "this " << endl;  
@@ -216,12 +284,14 @@ int main(int argc, char** argv){
         }
         // else{
         if (track < active_io -> start_track){
+            direction = 1;
             track++;
             tot_movement++;
             time_++;
 
         }
         else if (track > active_io -> start_track){
+            direction = -1;
             track--;
             tot_movement++;
             time_++;  
