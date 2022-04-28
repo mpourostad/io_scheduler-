@@ -210,6 +210,58 @@ class CLook: public Scheduler{
         }
     }
 };
+class FLook: public Scheduler{
+    vector <io_request*> add_queue;
+    vector  <io_request*> active_queue;
+    io_request *fetch_next_request(){
+        if (active_queue.empty()){
+            if (add_queue.empty()){
+                return nullptr;
+            }
+            else{
+                active_queue.swap(add_queue);
+            }         
+        }
+        io_request *p = nullptr;
+        int shortest_seek = numeric_limits<int>::max();
+        int index;
+        
+        for (int i = 0; i < active_queue.size(); i++){
+            if (abs(track - active_queue[i] -> start_track) < shortest_seek){
+                if ((track - active_queue[i] -> start_track) * direction <= 0){
+                    p = active_queue[i];
+                    index = i;
+                    shortest_seek = abs(track - active_queue[i] -> start_track);
+                }
+                
+            }
+        }
+        if (p == nullptr){
+            for (int i = 0; i < active_queue.size(); i++){
+                if (abs(track - active_queue[i] -> start_track) < shortest_seek){
+                    p = active_queue[i];
+                    index = i;
+                    shortest_seek = abs(track - active_queue[i] -> start_track);
+                
+                }
+            }
+        }
+        active_queue.erase(active_queue.begin() + index);
+        // cout << "this" << endl;
+        return p;
+    }
+    void add_to_queue(vector <io_request*> v){
+        for (int i = 0; i < v.size(); i++){
+            if (v[i]->start_time == time_){
+                if (!v[i]->pending){
+                    add_queue.push_back(v[i]);
+                    v[i] ->pending = true;
+                    break;
+                }
+            }
+        }
+    }
+};
 bool is_complete(vector <io_request*> req){
     for (int i = 0; i < req.size(); i++){
         if (!req[i] -> pending){
@@ -264,6 +316,9 @@ int main(int argc, char** argv){
         }
         else if (optarg[0] == 'c'){
             scheduler = new CLook;
+        }
+        else if (optarg[0] == 'f'){
+            scheduler = new FLook;
         }
         else{
             cout <<" N/A " << endl;
