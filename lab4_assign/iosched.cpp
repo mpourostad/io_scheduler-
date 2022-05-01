@@ -30,7 +30,6 @@ class io_request{
     int turnaround;
     bool pending;
     bool positive;
-    // bool is_complete;
     io_request (int , int, int); 
 
 };
@@ -40,9 +39,6 @@ io_request::io_request(int s, int t, int indx){
     io_num = indx;
     pending = false;
     positive = true;
-    // is_complete = false;
-    // turnaround = 0;
-    // wait_time = 0;
 }
 class Scheduler{
     public:
@@ -56,7 +52,6 @@ class Scheduler{
 };
 class FIFO: public Scheduler{
     public:
-    // queue <io_request*> io_queue;
     io_request *fetch_next_request(){
         io_request *p;
         if (io_queue.empty()){
@@ -65,7 +60,6 @@ class FIFO: public Scheduler{
         else{
             p = io_queue.front();
             io_queue.pop();
-            // p ->pending = true;
             return p;
         }
     }
@@ -247,7 +241,6 @@ class FLook: public Scheduler{
             }
         }
         active_queue.erase(active_queue.begin() + index);
-        // cout << "this" << endl;
         return p;
     }
     void add_to_queue(vector <io_request*> v){
@@ -340,22 +333,15 @@ int main(int argc, char** argv){
         int start;
         int track_;
         int success;
-        // success = ;
         if (sscanf(stoc, "%d %d", &start, &track_) == 2){
-            // start_time.push_back(start);
-            // track_num.push_back(track_);
             io_request *ptr;
             ptr = new io_request(start, track_, num);
             num++;
             io_request_p.push_back(ptr);
 
         }
-
     }
-    // for (int i = 0; i < io_request_p.size(); i++){
-    //     cout << io_request_p[i]->io_num << " " << io_request_p[i] ->start_time << " " << io_request_p[i] -> start_track << endl;
-    // }
-    time_ = 1;
+    time_ = 0;
     track = 0;
     bool complete = false;
     direction = 1;
@@ -363,25 +349,17 @@ int main(int argc, char** argv){
     while (true){        
         
         scheduler->add_to_queue(io_request_p);
-        
-        // cout << scheduler -> io_queue.front();
         if (complete){
             active_io ->disk_service_endt = time_;
-            // active_io -> turnaround = active_io ->disk_service_endt - active_io -> start_time;
             active_io = nullptr;
             complete = false;
-            // active_io -> is_complete = true;
-            // time_++;
         }
         if (active_io == nullptr){            
             active_io = scheduler->fetch_next_request();
-            // cout << active_io ->io_num << endl;
-            if (active_io == nullptr){ 
-                // cout << "this " << endl;  
+            if (active_io == nullptr){   
                 if (is_complete(io_request_p)){
                     break;
-                }
-                // cout << "this " << endl;               
+                }             
                 continue;
             }
             active_io-> disk_service_startt = time_;        
@@ -401,24 +379,11 @@ int main(int argc, char** argv){
             time_++;  
         }
         if (track ==  active_io -> start_track){
-            // active_io ->disk_service_endt = time_;
             complete = true;
-            // cout << "that " << endl;
         }
-        // }
               
     }
     print_io_request_info(io_request_p);
     print_io_stats(io_request_p);
-        // if a new I/O arrived to the system at this current time
-        // → add request to IO-queue
-        // if an IO is active and completed at this time
-        // → Compute relevant info and store in IO request for final summary if no IO request active now
-        // if requests are pending
-        // → Fetch the next request from IO-queue and start the new IO.
-        // else if all IO from input file processed → exit simulation
-        // if an IO is active
-        // → Move the head by one unit in the direction its going (to simulate seek)
-        // Increment time by 1
     return 0;
 }
